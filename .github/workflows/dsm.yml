@@ -21,7 +21,7 @@ jobs:
         with:
           github-token: ${{ secrets.DSM_TOKEN }}
           script: |
-            const organization = 'atls'
+            const organization = 'torin-asakura'
             const team_slugs = ['dsm']
             const body = function(){/*${{ steps.template.outputs.content }}*/}.toString()
             const opts = github.issues.listForRepo.endpoint.merge({
