@@ -1,0 +1,58 @@
+name: DSM
+on:
+  schedule:
+    # every day at 6:00 UTC (9:00 MSK)
+    - cron:  '0 6 * * MON-FRI'
+  workflow_dispatch:
+
+jobs:
+  comment:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Read template
+        id: template
+        uses: juliangruber/read-file-action@v1
+        with:
+          path: ./.github/ISSUE_TEMPLATE/dsm.md
+      - name: Echo package.json
+        run: echo ${{ steps.package.outputs.content }}
+      - uses: actions/github-script@v3
+        with:
+          github-token: ${{ secrets.DSM_TOKEN }}
+          script: |
+            const organization = 'atls'
+            const team_slugs = ['dsm']
+            const body = function(){/*${{ steps.template.outputs.content }}*/}.toString()
+            const opts = github.issues.listForRepo.endpoint.merge({
+              ...context.issue,
+              labels: ['Type: DSM'],
+              state: 'open'
+            })
+            const members = []
+            for (const team_slug of team_slugs) {
+              const teams_response = await github.request("GET /orgs/{org}/teams/{team_slug}/members", {
+                team_slug: team_slug,
+                org: organization
+              })
+              for (const member of teams_response['data']) {
+                members.push(member['login'])
+              }
+            }
+            const issues = await github.paginate(opts)
+            for (const issue of issues) {
+              github.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                state: 'closed'
+              })
+            }
+            github.issues.create({
+              title: '[DSM] ' + new Date().toDateString(),
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              assignees: members,
+              labels: ['Type: DSM'],
+              body: body.slice(13,-3)
+            })
